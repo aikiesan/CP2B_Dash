@@ -452,6 +452,74 @@ def load_geo_data():
             return None, None, None
 
 @st.cache_data
+def padronizar_paises(pais):
+    """Padroniza nomes de países para compatibilidade com Plotly"""
+    mapeamento = {
+        # Seus países → Nomes reconhecidos pelo Plotly
+        'EUA': 'United States',
+        'USA': 'United States',
+        'Estados Unidos': 'United States',
+        'Reino Unido': 'United Kingdom',
+        'UK': 'United Kingdom',
+        'Coreia do Sul': 'South Korea',
+        'Holanda': 'Netherlands',
+        'Alemanha': 'Germany',
+        'França': 'France',
+        'Espanha': 'Spain',
+        'Itália': 'Italy',
+        'China': 'China',
+        'Brasil': 'Brazil',
+        'Canadá': 'Canada',
+        'Canada': 'Canada',
+        'Austrália': 'Australia',
+        'Australia': 'Australia',
+        'Japão': 'Japan',
+        'India': 'India',
+        'Índia': 'India',
+        'Turquia': 'Turkey',
+        'México': 'Mexico',
+        'Iran': 'Iran',
+        'Irã': 'Iran',
+        'Suécia': 'Sweden',
+        'Noruega': 'Norway',
+        'Dinamarca': 'Denmark',
+        'Finlândia': 'Finland',
+        'Bélgica': 'Belgium',
+        'Suíça': 'Switzerland',
+        'Áustria': 'Austria',
+        'Polônia': 'Poland',
+        'República Tcheca': 'Czech Republic',
+        'Grécia': 'Greece',
+        'Portugal': 'Portugal',
+        'Tailândia': 'Thailand',
+        'Malásia': 'Malaysia',
+        'Singapura': 'Singapore',
+        'Filipinas': 'Philippines',
+        'Indonésia': 'Indonesia',
+        'África do Sul': 'South Africa',
+        'Egito': 'Egypt',
+        'Marrocos': 'Morocco',
+        'Israel': 'Israel',
+        'Arábia Saudita': 'Saudi Arabia',
+        'Emirados Árabes Unidos': 'United Arab Emirates',
+        'Argentina': 'Argentina',
+        'Chile': 'Chile',
+        'Colômbia': 'Colombia',
+        'Peru': 'Peru',
+        'Equador': 'Ecuador',
+        'Venezuela': 'Venezuela',
+        'Uruguai': 'Uruguay',
+        'Paraguai': 'Paraguay',
+        'Bolívia': 'Bolivia',
+        'Rússia': 'Russia',
+        'Ucrânia': 'Ukraine',
+        'Cazaquistão': 'Kazakhstan',
+        'Nova Zelândia': 'New Zealand'
+    }
+    
+    return mapeamento.get(pais, pais)
+
+@st.cache_data
 def process_country(pais_regiao):
     """
     Processa e padroniza países
@@ -549,12 +617,20 @@ st.markdown("""
     transform: translateX(2px);
 }
 
+/* Estilo para botão ativo (com ▶️) */
+.stButton > button[title*="▶️"] {
+    background: linear-gradient(90deg, #2d5016 0%, #3d602d 100%);
+    color: white;
+    border-color: #2d5016;
+    box-shadow: 0 2px 8px rgba(45, 80, 22, 0.4);
+}
+
 /* Container da sidebar */
 .css-1d391kg {
     background-color: #f8f9fa;
 }
 </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 # Sidebar com design aprimorado
 with st.sidebar:
@@ -595,7 +671,7 @@ with st.sidebar:
     
     # ========== NAVEGAÇÃO COM BOTÕES ==========
     st.markdown("### 🧭 Navegação Principal")
-    
+
     # Lista de seções com ícones e nomes
     sections = [
         ("📊", "Visão Geral", "📊 Visão Geral"),
@@ -608,25 +684,24 @@ with st.sidebar:
         ("🗺️", "Mapas", "🗺️ Análise Geoespacial")
     ]
     
+    # Inicializar session_state se não existir
+    if 'current_section' not in st.session_state:
+        st.session_state['current_section'] = "📊 Visão Geral"
+    
     # Botões organizados em lista vertical
     for icon, name, section_key in sections:
-        if st.button(f"{icon} {name}", key=f"btn_{name.lower()}", use_container_width=True):
-            section_selected = section_key
-            st.rerun()
+        # Verificar se esta é a seção ativa
+        is_active = st.session_state.get('current_section') == section_key
+        button_text = f"{'▶️ ' if is_active else ''}{icon} {name}"
+        
+        if st.button(button_text, key=f"btn_{name.lower().replace(' ', '_')}", use_container_width=True):
+            st.session_state['current_section'] = section_key
     
-    # Valor padrão se nenhum botão foi pressionado
-    if 'section_selected' not in st.session_state:
-        section_selected = "📊 Visão Geral"
-    else:
-        # Manter seleção anterior se existir
-        section_selected = st.session_state.get('current_section', "📊 Visão Geral")
-
-    # Armazenar seleção no session_state
-    if 'section_selected' not in locals():
-        section_selected = "📊 Visão Geral"  # Default
+    # Usar a seção armazenada no session_state
+    section_selected = st.session_state['current_section']
     
-    # Salvar seleção atual no session_state
-    st.session_state['current_section'] = section_selected
+    # Seção ativa
+    st.markdown(f"**Seção Ativa:** {section_selected}")
     
     st.markdown("---")
     
@@ -1386,215 +1461,64 @@ if df_original is not None:
                 
                 st.plotly_chart(fig_method_status, use_container_width=True)
         
-    # TAB 6: VARIÁVEIS ESPECIAIS
+    # ========== SEÇÃO 6: VARIÁVEIS ESPECIAIS ==========
     elif section_selected == "🎯 Variáveis Especiais":
-            st.markdown("## 🎯 Análise de Variáveis - Prof. Rubens")
-            st.markdown("*Análise das variáveis solicitadas: Custo, Relevo, Impactos Ambientais, Mão de Obra, Localização e Clima*")
-            
-            # Estatísticas das variáveis
-            variables = {
-                'Custo': df_original.get('Custo', pd.Series()).notna().sum() if 'Custo' in df_original.columns else 0,
-                'Relevo Local': df_original.get('Relevo_Local', pd.Series()).notna().sum() if 'Relevo_Local' in df_original.columns else 0,
-                'Impacto Ambiental': df_original.get('Impacto_Ambiental', pd.Series()).notna().sum() if 'Impacto_Ambiental' in df_original.columns else 0,
-                'Mão de Obra': df_original.get('Mao_de_Obra', pd.Series()).notna().sum() if 'Mao_de_Obra' in df_original.columns else 0,
-                'Localização': df_original.get('Localizacao', pd.Series()).notna().sum() if 'Localizacao' in df_original.columns else 0,
-                'Clima': df_original.get('Cidade_Clima', pd.Series()).notna().sum() if 'Cidade_Clima' in df_original.columns else 0
-            }
-            
-            # Cards de estatísticas
-            cols = st.columns(3)
-            for i, (var, count) in enumerate(variables.items()):
-                with cols[i % 3]:
-                    percentage = (count / len(df_original)) * 100
-                    color = COLOR_PALETTE['success'] if percentage > 50 else COLOR_PALETTE['warning'] if percentage > 25 else COLOR_PALETTE['danger']
-                    
-                    st.markdown(f"""
-                    <div class='metric-card' style='text-align: center;'>
-                        <h4 style='color: {color}; margin: 0;'>{var}</h4>
-                        <h2 style='margin: 0.5rem 0; color: #1a3a52;'>{count}</h2>
-                        <p style='color: #666; margin: 0;'>{percentage:.1f}% dos artigos</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-            st.markdown("---")
-            
-            # Gráfico de barras das variáveis
-            fig_vars = go.Figure(data=[
-                go.Bar(
-                    x=list(variables.keys()),
-                    y=list(variables.values()),
-                    marker_color=[COLOR_PALETTE['primary'], COLOR_PALETTE['secondary'], 
-                                COLOR_PALETTE['info'], COLOR_PALETTE['danger'], 
-                                COLOR_PALETTE['warning'], COLOR_PALETTE['success']],
-                    text=list(variables.values()),
-                    textposition='auto',
-                    marker=dict(cornerradius=5)
-                )
-            ])
-            
-            fig_vars.update_layout(
-                title="Quantidade de Artigos com Informações por Variável",
-                xaxis_title="Variável",
-                yaxis_title="Quantidade de Artigos",
-                showlegend=False,
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                xaxis=dict(gridcolor='rgba(0,0,0,0)'),
-                yaxis=dict(gridcolor='rgba(0,0,0,0.1)')
-            )
-            
-            st.plotly_chart(fig_vars, use_container_width=True)
-            
-            # Análise cruzada
-            st.markdown("### 🔄 Cruzamento: Variáveis vs Tecnologias")
-            
-            # Criar matriz de presença
-            var_tech_matrix = {}
-            
-            for idx, row in df_original.iterrows():
-                techs = process_technologies(row.get('TECNOLOGIA', ''))
-                
-                for tech in techs:
-                    if tech != 'Não especificado':
-                        if tech not in var_tech_matrix:
-                            var_tech_matrix[tech] = {var: 0 for var in variables.keys()}
-                        
-                        for var in variables.keys():
-                            col_name = var.replace(' ', '_').replace('ã', 'a')
-                            if var == 'Mão de Obra':
-                                col_name = 'Mao_de_Obra'
-                            elif var == 'Clima':
-                                col_name = 'Cidade_Clima'
-                            elif var == 'Localização':
-                                col_name = 'Localizacao'
-                            
-                            if pd.notna(row.get(col_name)):
-                                var_tech_matrix[tech][var] += 1
-            
-            var_tech_df = pd.DataFrame(var_tech_matrix).T
-            
-            if not var_tech_df.empty:
-                # Selecionar top tecnologias
-                top_techs_var = var_tech_df.sum(axis=1).nlargest(10).index
-                var_tech_subset = var_tech_df.loc[top_techs_var]
-                
-                # Normalizar por linha
-                var_tech_norm = var_tech_subset.div(var_tech_subset.sum(axis=1), axis=0) * 100
-                
-                fig_var_tech = px.imshow(
-                    var_tech_norm.values,
-                    labels=dict(x="Variável", y="Tecnologia", color="% Artigos"),
-                    x=var_tech_norm.columns,
-                    y=var_tech_norm.index,
-                    color_continuous_scale='Greens',
-                    title="Presença de Variáveis por Tecnologia (% de artigos)"
-                )
-                
-                fig_var_tech.update_layout(
-                    height=500,
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)'
-                )
-                
-                st.plotly_chart(fig_var_tech, use_container_width=True)
-            
-            # Tabela detalhada
-            st.markdown("### 📋 Tabela Detalhada das Variáveis")
-            
-            # Filtros em colunas
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                filter_complete = st.checkbox("Apenas artigos completos", help="Mostra apenas artigos com todas as variáveis preenchidas")
-            
-            with col2:
-                min_vars = st.slider("Mínimo de variáveis", 0, 6, 0, help="Filtra artigos com número mínimo de variáveis preenchidas")
-            
-            with col3:
-                selected_vars = st.multiselect(
-                    "Filtrar por variáveis",
-                    list(variables.keys()),
-                    default=[],
-                    help="Selecione variáveis específicas para filtrar"
-                )
-            
-            # Preparar dados - removendo colunas que não existem mais
-            available_columns = ['ID', 'PAIS', 'ANO', 'TECNOLOGIA', 'TIPO_RESIDUO', 'METODOLOGIA']
-            # Verificar quais colunas existem nos dados
-            existing_columns = [col for col in available_columns if col in df_original.columns]
-            df_variables = df_original[existing_columns].copy()
-            
-            # Adicionar colunas processadas
-            df_variables['Tecnologias'] = df_variables['TECNOLOGIA'].apply(
-                lambda x: ', '.join(process_technologies(x))
-            )
-            df_variables['Resíduos'] = df_variables['TIPO_RESIDUO'].apply(
-                lambda x: ', '.join(process_waste_types(x))
-            )
-            
-            # Aplicar filtros
-            df_filtered = df_variables.copy()
-            
-            if filter_complete:
-                required_cols = ['Custo', 'Relevo Local', 'Impacto Ambiental', 
-                               'Mao_de_Obra', 'Localizacao', 'Cidade_Clima']
-                df_filtered = df_filtered.dropna(subset=required_cols, how='any')
-            
-            if min_vars > 0:
-                var_cols = ['Custo', 'Relevo Local', 'Impacto Ambiental', 
-                           'Mao_de_Obra', 'Localizacao', 'Cidade_Clima']
-                df_filtered['vars_count'] = df_filtered[var_cols].notna().sum(axis=1)
-                df_filtered = df_filtered[df_filtered['vars_count'] >= min_vars]
-                df_filtered = df_filtered.drop('vars_count', axis=1)
-            
-            if selected_vars:
-                for var in selected_vars:
-                    col_name = var.replace(' ', '_').replace('ã', 'a')
-                    if var == 'Mão de Obra':
-                        col_name = 'Mao_de_Obra'
-                    elif var == 'Clima':
-                        col_name = 'Cidade_Clima'
-                    elif var == 'Localização':
-                        col_name = 'Localizacao'
-                    
-                    df_filtered = df_filtered[df_filtered[col_name].notna()]
-            
-            # Estatísticas
-            st.info(f"📊 Total de artigos filtrados: **{len(df_filtered):,}** de {len(df_variables):,}")
-            
-            # Mostrar tabela
-            if len(df_filtered) > 0:
-                st.dataframe(
-                    df_filtered,
-                    use_container_width=True,
-                    height=400,
-                    hide_index=True
-                )
-                
-                # Download
-                csv = df_filtered.to_csv(index=False, encoding='utf-8-sig')
-                st.download_button(
-                    label="📥 Download Tabela de Variáveis",
-                    data=csv,
-                    file_name=f"analise_variaveis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv"
-                )
-            else:
-                st.warning("⚠️ Nenhum artigo encontrado com os filtros aplicados.")
+        st.header("🎯 Análise de Variáveis - Prof. Rubens")
+        st.markdown("*Análise das variáveis disponíveis no dataset*")
         
-    # TAB 7: DADOS
+        # Variáveis disponíveis no dataset
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if 'LOCALIZACAO' in df_original.columns:
+                loc_count = df_original['LOCALIZACAO'].notna().sum()
+                loc_pct = (loc_count / len(df_original)) * 100
+                st.metric("🌍 Localização", loc_count, f"{loc_pct:.1f}% preenchido")
+            else:
+                st.metric("🌍 Localização", "0", "Não disponível")
+        
+        with col2:
+            if 'CLIMA' in df_original.columns:
+                clima_count = df_original['CLIMA'].notna().sum()
+                clima_pct = (clima_count / len(df_original)) * 100
+                st.metric("🌡️ Clima", clima_count, f"{clima_pct:.1f}% preenchido")
+            else:
+                st.metric("🌡️ Clima", "0", "Não disponível")
+        
+        # Análise simples por país
+        if 'LOCALIZACAO' in df_original.columns and 'PAIS' in df_original.columns:
+            st.subheader("🌍 Análise por País")
+            
+            paises_dados = []
+            for pais in df_original['PAIS'].unique()[:10]:  # Top 10 países
+                dados_pais = df_original[df_original['PAIS'] == pais]
+                loc_count = dados_pais['LOCALIZACAO'].notna().sum()
+                total_pais = len(dados_pais)
+                pct = (loc_count / total_pais * 100) if total_pais > 0 else 0
+                
+                paises_dados.append({
+                    'País': pais,
+                    'Total': total_pais,
+                    'Com_Localização': loc_count,
+                    'Percentual': pct
+                })
+            
+            df_paises = pd.DataFrame(paises_dados).sort_values('Total', ascending=False)
+            st.dataframe(df_paises, use_container_width=True)
+    
+    # ========== SEÇÃO 7: DADOS ==========
     elif section_selected == "📑 Dados":
-            st.markdown("## 📑 Visualização e Download dos Dados")
-            
-            # Opções de visualização
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                data_view = st.selectbox(
-                    "Escolha os dados para visualizar:",
-                    ["Dados Originais", "Dados Expandidos", "Dados Processados"],
-                    help="Diferentes visões dos dados para análise"
-                )
+        st.markdown("## 📑 Visualização e Download dos Dados")
+        
+        # Opções de visualização
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            data_view = st.selectbox(
+                "Escolha os dados para visualizar:",
+                ["Dados Originais", "Dados Expandidos", "Dados Processados"],
+                help="Diferentes visões dos dados para análise"
+            )
             
             with col2:
                 # Colunas padrão que existem nos dados atuais
@@ -1613,7 +1537,7 @@ if df_original is not None:
                 description = "Dados originais sem processamento"
             elif data_view == "Dados Expandidos":
                 if process_option == "Expandir dados (análise detalhada)":
-                    display_df = df.copy()
+                    display_df = df_original.copy()  # Usar df_original em vez de df
                     description = "Dados expandidos com múltiplas linhas por artigo"
                 else:
                     display_df = expand_dataframe(df_original)
@@ -1816,11 +1740,10 @@ if df_original is not None:
             else:
                 st.warning("⚠️ Nenhum dado disponível com os filtros aplicados.")
         
-# ========== SEÇÃO 8: ANÁLISE GEOESPACIAL ==========
-elif section_selected == "🗺️ Análise Geoespacial":
-    st.header("🗺️ Análise Geoespacial dos Estudos")
-    
-    if df_original is not None:
+    # ========== SEÇÃO 8: ANÁLISE GEOESPACIAL ==========
+    elif section_selected == "🗺️ Análise Geoespacial":
+        st.header("🗺️ Análise Geoespacial dos Estudos")
+        
         # TABS para organizar os diferentes mapas
         tab1, tab2, tab3, tab4 = st.tabs(["🌍 Mapa Mundial", "📍 Pontos Exatos", "🔥 Mapa de Calor", "📊 Dashboard Completo"])
         
@@ -1849,21 +1772,29 @@ elif section_selected == "🗺️ Análise Geoespacial":
                 paises_com_tech = df_original[df_original[tecnologia_selecionada] == 'Sim']
                 
                 if not paises_com_tech.empty:
-                    # Contar por país
+                    # Contar por país e padronizar nomes
                     contagem_paises = paises_com_tech['PAIS'].value_counts().reset_index()
                     contagem_paises.columns = ['País', 'Quantidade_Estudos']
+                    
+                    # PADRONIZAR NOMES DOS PAÍSES
+                    contagem_paises['País_Padronizado'] = contagem_paises['País'].apply(padronizar_paises)
+
+                    # Debug: mostrar mapeamento
+                    st.write("🔍 **Países mapeados:**")
+                    st.write(contagem_paises[['País', 'País_Padronizado', 'Quantidade_Estudos']])
                     
                     # MAPA CHOROPLETH
                     import plotly.express as px
                     
                     fig = px.choropleth(
                         data_frame=contagem_paises,
-                        locations='País',
+                        locations='País_Padronizado',
                         color='Quantidade_Estudos',
                         locationmode='country names',
+                        hover_name='País',  # Mostra nome original no hover
                         color_continuous_scale='Viridis',
                         title=f"Distribuição Mundial - {tecnologia_selecionada.replace('_', ' ').title()}",
-                        labels={'Quantidade_Estudos': 'Nº de Estudos'},
+                        labels={'Quantidade_Estudos': 'Nº de Estudos', 'País_Padronizado': 'País'},
                         height=600
                     )
                     
@@ -1885,23 +1816,139 @@ elif section_selected == "🗺️ Análise Geoespacial":
                         st.metric("📚 Total de Estudos", contagem_paises['Quantidade_Estudos'].sum())
                     with col3:
                         st.metric("🏆 País Líder", contagem_paises.iloc[0]['País'])
-                
+                    
                 else:
                     st.warning(f"❌ Nenhum estudo encontrado para {tecnologia_selecionada}")
         
-        # ========== PLACEHOLDER PARA PRÓXIMAS TABS ==========
+        # ========== TAB 2: PONTOS EXATOS ==========
         with tab2:
-            st.info("📍 Mapa de Pontos Exatos - Em implementação...")
-        
+            st.subheader("📍 Localização Exata dos Estudos")
+            
+            # Seletor de tecnologia para pontos
+            tecnologia_pontos = st.selectbox(
+                "🔬 Selecione a tecnologia para visualizar pontos:",
+                tech_cols,
+                format_func=lambda x: x.replace('_', ' ').title(),
+                key="tech_points_map"
+            )
+            
+            if tecnologia_pontos:
+                # Filtrar dados com coordenadas válidas
+                dados_filtrados = df_original[
+                    (df_original[tecnologia_pontos] == 'Sim') &
+                    (df_original['LATITUDE_DECIMAL'].notna()) &
+                    (df_original['LONGITUDE_DECIMAL'].notna()) &
+                    (df_original['LATITUDE_DECIMAL'] != 0) &
+                    (df_original['LONGITUDE_DECIMAL'] != 0)
+                ].copy()
+                
+                if not dados_filtrados.empty:
+                    st.success(f"✅ Encontrados {len(dados_filtrados)} estudos com coordenadas exatas")
+                    
+                    # Preparar dados para hover
+                    dados_filtrados['hover_text'] = (
+                        "🏛️ <b>" + dados_filtrados['TITULO'].str[:50] + "...</b><br>" +
+                        "🌍 " + dados_filtrados['PAIS'] + "<br>" +
+                        "📍 " + dados_filtrados['LOCALIZACAO'] + "<br>" +
+                        "🌡️ " + dados_filtrados['CLIMA'].fillna('N/A') + "<br>" +
+                        "📅 " + dados_filtrados['ANO'].astype(str)
+                    )
+                    
+                    # MAPA DE PONTOS EXATOS
+                    import plotly.express as px
+                    
+                    fig_points = px.scatter_geo(
+                        dados_filtrados,
+                        lat='LATITUDE_DECIMAL',
+                        lon='LONGITUDE_DECIMAL',
+                        color='PAIS',
+                        size_max=15,
+                        hover_name='TITULO',
+                        hover_data={
+                            'PAIS': True,
+                            'LOCALIZACAO': True,
+                            'CLIMA': True,
+                            'ANO': True,
+                            'LATITUDE_DECIMAL': ':,.3f',
+                            'LONGITUDE_DECIMAL': ':,.3f'
+                        },
+                        title=f"Localização Exata - {tecnologia_pontos.replace('_', ' ').title()}",
+                        height=600,
+                        color_discrete_sequence=px.colors.qualitative.Set3
+                    )
+                    
+                    fig_points.update_traces(
+                        marker=dict(size=8, opacity=0.8, line=dict(width=1, color='white')),
+                        selector=dict(mode='markers')
+                    )
+                    
+                    fig_points.update_layout(
+                        geo=dict(
+                            showframe=False,
+                            showcoastlines=True,
+                            projection_type='natural earth',
+                            showland=True,
+                            landcolor='rgb(243, 243, 243)',
+                            coastlinecolor='rgb(204, 204, 204)',
+                        )
+                    )
+                    
+                    st.plotly_chart(fig_points, use_container_width=True)
+                    
+                    # Estatísticas por continente/região
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        st.metric("📍 Total de Pontos", len(dados_filtrados))
+                    
+                    with col2:
+                        paises_unicos = dados_filtrados['PAIS'].nunique()
+                        st.metric("🌍 Países Diferentes", paises_unicos)
+                    
+                    with col3:
+                        lat_range = dados_filtrados['LATITUDE_DECIMAL'].max() - dados_filtrados['LATITUDE_DECIMAL'].min()
+                        st.metric("🗺️ Dispersão Lat", f"{lat_range:.1f}°")
+                    
+                    with col4:
+                        lon_range = dados_filtrados['LONGITUDE_DECIMAL'].max() - dados_filtrados['LONGITUDE_DECIMAL'].min()
+                        st.metric("🗺️ Dispersão Lon", f"{lon_range:.1f}°")
+                    
+                    # Tabela detalhada com filtros
+                    st.subheader("📋 Detalhes dos Estudos")
+                    
+                    # Filtro por país
+                    paises_disponiveis = ['Todos'] + sorted(dados_filtrados['PAIS'].unique().tolist())
+                    pais_filtro = st.selectbox("🌍 Filtrar por país:", paises_disponiveis, key="country_filter_points")
+                    
+                    if pais_filtro != 'Todos':
+                        dados_mostrar = dados_filtrados[dados_filtrados['PAIS'] == pais_filtro]
+                    else:
+                        dados_mostrar = dados_filtrados
+                    
+                    # Colunas para mostrar na tabela
+                    colunas_mostrar = ['TITULO', 'PAIS', 'LOCALIZACAO', 'CLIMA', 'ANO', 'LATITUDE_DECIMAL', 'LONGITUDE_DECIMAL']
+                    
+                    st.dataframe(
+                        dados_mostrar[colunas_mostrar].rename(columns={
+                            'TITULO': '📚 Título',
+                            'PAIS': '🌍 País',
+                            'LOCALIZACAO': '📍 Localização',
+                            'CLIMA': '🌡️ Clima',
+                            'ANO': '📅 Ano',
+                            'LATITUDE_DECIMAL': '📐 Latitude',
+                            'LONGITUDE_DECIMAL': '📐 Longitude'
+                        }),
+                        use_container_width=True,
+                        height=300
+                    )
+                    
+                else:
+                    st.warning(f"❌ Nenhum estudo com coordenadas válidas encontrado para {tecnologia_pontos}")
+                    st.info("💡 **Dica:** Alguns estudos podem ter coordenadas em branco ou inválidas (0,0)")
         with tab3:
-            st.info("🔥 Mapa de Calor - Em implementação...")
-        
+            st.info("🔥 Em desenvolvimento...")  
         with tab4:
-            st.info("📊 Dashboard Completo - Em implementação...")
-    
-    else:
-        st.error("❌ Erro ao carregar dados")
-
+            st.info("📊 Em desenvolvimento...")
 else:
     # Erro no carregamento dos dados do Google Sheets
     st.error("❌ **Erro ao carregar dados do Google Sheets**")
