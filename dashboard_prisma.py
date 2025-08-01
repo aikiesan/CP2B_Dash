@@ -442,10 +442,8 @@ def load_geo_data():
         df_dados = pd.read_csv(URL_DADOS)
         return df_residuos, df_tecnologias, df_dados
     except Exception as e:
-        st.warning(f"Erro ao carregar abas separadas: {str(e)}")
+        # Fallback silencioso: usar apenas a aba principal que contém todos os dados
         try:
-            # Fallback: usar apenas a aba principal que contém todos os dados
-            st.info("🔄 Usando estratégia de fallback - carregando aba principal...")
             df_dados = pd.read_csv(URL_DADOS)
             # A aba principal já contém as informações de tecnologia e resíduos
             return df_dados, df_dados, df_dados
@@ -1782,15 +1780,19 @@ if df_original is not None:
             else:
                 st.warning("⚠️ Nenhum dado disponível com os filtros aplicados.")
         
-    # ========== SEÇÃO 8: ANÁLISE GEOESPACIAL ==========
-    elif section_selected == "🗺️ Análise Geoespacial":
-        st.header("🗺️ Análise Geoespacial dos Estudos")
+# ========== SEÇÃO 8: ANÁLISE GEOESPACIAL ==========
+elif section_selected == "🗺️ Análise Geoespacial":
+    st.header("🗺️ Análise Geoespacial dos Estudos")
+    
+    if df_original is not None:
+        # TABS para organizar os diferentes mapas
+        tab1, tab2, tab3, tab4 = st.tabs(["🌍 Mapa Mundial", "📍 Pontos Exatos", "🔥 Mapa de Calor", "📊 Dashboard Completo"])
         
-        if df_original is not None:
-            # MAPA DE TECNOLOGIAS (que funcionam)
-            st.subheader("⚡ Mapa de Tecnologias por País")
+        # ========== TAB 1: MAPA MUNDIAL COLORIDO ==========
+        with tab1:
+            st.subheader("🌍 Mapa Mundial - Distribuição por País")
             
-            # Colunas de tecnologia (que existem!)
+            # Seletor de tecnologia
             tech_cols = [col for col in df_original.columns if col in [
                 'Aterro_Sanitario', 'BECCS', 'Biocombustiveis', 'Biocombustivel_Aviacao',
                 'Biodigestao_Anaerobia', 'Bioetanol_Fermentacao', 'Biorrefinaria_Integrada',
@@ -1800,13 +1802,14 @@ if df_original is not None:
             ]]
             
             tecnologia_selecionada = st.selectbox(
-                "Selecione a tecnologia:",
+                "🔬 Selecione a tecnologia:",
                 tech_cols,
-                format_func=lambda x: x.replace('_', ' ').title()
+                format_func=lambda x: x.replace('_', ' ').title(),
+                key="tech_world_map"
             )
             
             if tecnologia_selecionada:
-                # Filtrar países com essa tecnologia
+                # Filtrar dados
                 paises_com_tech = df_original[df_original[tecnologia_selecionada] == 'Sim']
                 
                 if not paises_com_tech.empty:
@@ -1814,26 +1817,54 @@ if df_original is not None:
                     contagem_paises = paises_com_tech['PAIS'].value_counts().reset_index()
                     contagem_paises.columns = ['País', 'Quantidade_Estudos']
                     
-                    st.success(f"✅ Encontrados {len(paises_com_tech)} estudos com {tecnologia_selecionada}")
-                    
-                    # Gráfico simples
+                    # MAPA CHOROPLETH
                     import plotly.express as px
-                    fig = px.bar(
-                        contagem_paises.head(10), 
-                        x='País', 
-                        y='Quantidade_Estudos',
-                        title=f"Top 10 Países - {tecnologia_selecionada.replace('_', ' ').title()}"
+                    
+                    fig = px.choropleth(
+                        data_frame=contagem_paises,
+                        locations='País',
+                        color='Quantidade_Estudos',
+                        locationmode='country names',
+                        color_continuous_scale='Viridis',
+                        title=f"Distribuição Mundial - {tecnologia_selecionada.replace('_', ' ').title()}",
+                        labels={'Quantidade_Estudos': 'Nº de Estudos'},
+                        height=600
                     )
+                    
+                    fig.update_layout(
+                        geo=dict(
+                            showframe=False,
+                            showcoastlines=True,
+                            projection_type='equirectangular'
+                        )
+                    )
+                    
                     st.plotly_chart(fig, use_container_width=True)
                     
-                    # Tabela
-                    st.dataframe(contagem_paises)
-                    
+                    # Métricas rápidas
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("🌍 Total de Países", len(contagem_paises))
+                    with col2:
+                        st.metric("📚 Total de Estudos", contagem_paises['Quantidade_Estudos'].sum())
+                    with col3:
+                        st.metric("🏆 País Líder", contagem_paises.iloc[0]['País'])
+                
                 else:
                     st.warning(f"❌ Nenhum estudo encontrado para {tecnologia_selecionada}")
         
-        else:
-            st.error("❌ Erro ao carregar dados")
+        # ========== PLACEHOLDER PARA PRÓXIMAS TABS ==========
+        with tab2:
+            st.info("📍 Mapa de Pontos Exatos - Em implementação...")
+        
+        with tab3:
+            st.info("🔥 Mapa de Calor - Em implementação...")
+        
+        with tab4:
+            st.info("📊 Dashboard Completo - Em implementação...")
+    
+    else:
+        st.error("❌ Erro ao carregar dados")
 
 else:
     # Erro no carregamento dos dados do Google Sheets
