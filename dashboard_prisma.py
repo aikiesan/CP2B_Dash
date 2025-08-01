@@ -517,6 +517,45 @@ with col_title:
     </p>
     """, unsafe_allow_html=True)
 
+# CSS para botões de navegação elegantes
+st.markdown("""
+<style>
+/* Estilo para botões de navegação */
+.stButton > button {
+    width: 100%;
+    height: 50px;
+    background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);
+    color: #2d5016;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    margin-bottom: 8px;
+    text-align: left;
+    padding-left: 16px;
+}
+
+.stButton > button:hover {
+    background: linear-gradient(90deg, #2d5016 0%, #3d602d 100%);
+    color: white;
+    border-color: #2d5016;
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(45, 80, 22, 0.3);
+}
+
+.stButton > button:active {
+    background: linear-gradient(90deg, #1e3a0f 0%, #2d5016 100%);
+    transform: translateX(2px);
+}
+
+/* Container da sidebar */
+.css-1d391kg {
+    background-color: #f8f9fa;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Sidebar com design aprimorado
 with st.sidebar:
     st.markdown("""
@@ -556,41 +595,38 @@ with st.sidebar:
     
     # ========== NAVEGAÇÃO COM BOTÕES ==========
     st.markdown("### 🧭 Navegação Principal")
-
-    # Organizar botões em grupos
-    col1, col2 = st.columns(2)
-
-    with col1:
-        btn_visao = st.button("📊 Visão\nGeral", key="btn_visao", use_container_width=True)
-        btn_tech = st.button("🔬 Tecnologias", key="btn_tech", use_container_width=True)
-        btn_residuos = st.button("♻️ Resíduos", key="btn_residuos", use_container_width=True)
-        btn_comb = st.button("🔄 Combinações", key="btn_comb", use_container_width=True)
-
-    with col2:
-        btn_metod = st.button("📐 Metodologias", key="btn_metod", use_container_width=True)
-        btn_var = st.button("🎯 Variáveis", key="btn_var", use_container_width=True)
-        btn_dados = st.button("📑 Dados", key="btn_dados", use_container_width=True)
-        btn_geo = st.button("🗺️ Mapas", key="btn_geo", use_container_width=True)
-
-    # Lógica de seleção
-    if btn_visao:
+    
+    # Lista de seções com ícones e nomes
+    sections = [
+        ("📊", "Visão Geral", "📊 Visão Geral"),
+        ("🔬", "Tecnologias", "🔬 Tecnologias"),
+        ("♻️", "Resíduos", "♻️ Resíduos"),
+        ("🔄", "Combinações", "🔄 Combinações"),
+        ("📐", "Metodologias", "📐 Metodologias"),
+        ("🎯", "Variáveis", "🎯 Variáveis Especiais"),
+        ("📑", "Dados", "📑 Dados"),
+        ("🗺️", "Mapas", "🗺️ Análise Geoespacial")
+    ]
+    
+    # Botões organizados em lista vertical
+    for icon, name, section_key in sections:
+        if st.button(f"{icon} {name}", key=f"btn_{name.lower()}", use_container_width=True):
+            section_selected = section_key
+            st.rerun()
+    
+    # Valor padrão se nenhum botão foi pressionado
+    if 'section_selected' not in st.session_state:
         section_selected = "📊 Visão Geral"
-    elif btn_tech:
-        section_selected = "🔬 Tecnologias"
-    elif btn_residuos:
-        section_selected = "♻️ Resíduos"
-    elif btn_comb:
-        section_selected = "🔄 Combinações"
-    elif btn_metod:
-        section_selected = "📐 Metodologias"
-    elif btn_var:
-        section_selected = "🎯 Variáveis Especiais"
-    elif btn_dados:
-        section_selected = "📑 Dados"
-    elif btn_geo:
-        section_selected = "🗺️ Análise Geoespacial"
     else:
+        # Manter seleção anterior se existir
+        section_selected = st.session_state.get('current_section', "📊 Visão Geral")
+
+    # Armazenar seleção no session_state
+    if 'section_selected' not in locals():
         section_selected = "📊 Visão Geral"  # Default
+    
+    # Salvar seleção atual no session_state
+    st.session_state['current_section'] = section_selected
     
     st.markdown("---")
     
